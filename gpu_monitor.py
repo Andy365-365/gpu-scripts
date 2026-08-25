@@ -530,6 +530,9 @@ def main():
     signal.signal(signal.SIGINT, lambda *a: sys.exit(0))
     psutil.cpu_percent(None)  # 初始化：psutil 首次调用无历史，先建立基线
     prev_size = term_size()
+    height = 0  # 高度水印：至今最大行数。原地刷新靠它补空行（带 CLR_LINE）
+              # 清除当前帧没覆盖到的旧行——进程表变空/容器关闭时行数缩短，
+              # 不补的话旧行直接裸露在屏幕上
     try:
         n = 0
         while True:
@@ -545,15 +548,20 @@ def main():
                 continue
             _nvml_warned = False  # 本帧正常，复位告警标志
             rows = render(d)
-            # 窗口尺寸变化 → 先整屏清再重绘，避免残留
-            # （变窄：折行残段落在下一行行首，CLR_LINE 清不到跨行内容；
-            #  变短：上滚后旧内容留在原位）
+            # 窗口尺寸变化 → 先整屏清再重绘，避免残留；旧内容已清，水印重置
             size = term_size()
             if size is not None and size != prev_size:
                 sys.stdout.write("\033[2J\033[1;1H")
                 sys.stdout.flush()
                 prev_size = size
-            # 面板锚定在屏幕顶部（第 1 行）：每帧回到第 1 行原地重绘，多余空间在底部
+                height = len(rows)
+            # 补空行到水印高度（空行同样带 CLR_LINE），清除当前帧未覆盖的旧行
+            height = max(height, len(rows))
+            if size is not None:
+                height = min(height, max(size[0], 1))  # 不超终端高度，防整屏上滚
+            for i in range(len(rows), height):
+                rows.append("")
+            # 面板锚定在屏幕顶部（第 1 行）：每帧回到第 1 行原地重绘
             # 行与行之间才换行，末行不加 \n，避免顶出屏底触发整屏上滚
             out = "\033[1;1H" + "\n".join(r + CLR_LINE for r in rows)
             sys.stdout.write(out)
