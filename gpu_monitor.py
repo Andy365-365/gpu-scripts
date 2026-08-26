@@ -34,7 +34,9 @@ import pynvml as nvml
 # ===== NVML 初始化（%SM 直读，替代 pmon，与 nvitop 同源）=====
 _nvml_lock = threading.Lock()
 _nvml_warned = False  # 主循环兜底：采集异常只告警一次（stderr），不刷屏
-_nvml_fail_streak = 0  # NVML 进程利用率连续失败计数（瞬态 NotFound 静默，连续 10 次才提示）
+# _nvml_fail_streak = 0  # 原连续失败计数：曾配合"连续10次异常"stderr 提示，
+# 该提示已注释（无数据时 SM/GMBW 显示 0，无需提示；且 TUI 原地刷新下
+# stderr 提示会与帧输出交错，行首被覆盖成 "u_monitor] NVML ..." 缺前缀）。
 _proc_cache = {}  # pid -> psutil.Process（复用对象才能维持 cpu_percent 的跨帧缓存）
 nvml.nvmlInit()
 
@@ -346,8 +348,7 @@ def get_procs():
         # （GPU 空闲/进程不活跃）驱动返回 NOT_FOUND，nvitop 用 default=()
         # 把它当空列表处理。pynvml 包成了异常，这里按空采样处理：
         # 不计数、不告警，缺采样的进程由调用方填 0（同 nvitop）。
-        # 其他类型的 NVML 错误才计入连续失败，连续 10 次提示一次。
-        global _nvml_fail_streak
+        # （原"连续失败计数 + 提示一次"逻辑整体注释掉，原因见函数开头。）
         r = {}
         with _nvml_lock:
             ts = time.time_ns() // 1000 - 1_000_000  # 1 秒前（同 nvitop）
@@ -357,12 +358,14 @@ def get_procs():
                     samples = nvml.nvmlDeviceGetProcessUtilization(h,
                                                                   timeStamp=ts)
                 except nvml.NVMLError:
-                    _nvml_fail_streak += 1
-                    if _nvml_fail_streak == 10:
-                        print("[gpu_monitor] NVML 进程利用率连续 10 次异常，"
-                              "进程表 SM/GMBW 可能缺数据", file=sys.stderr)
+                    # 无采样 = 正常空闲，静默跳过（SM/BW 由调用方填 0）。
+                    # 原连续失败计数与提示逻辑：
+                    # _nvml_fail_streak += 1
+                    # if _nvml_fail_streak == 10:
+                    #     print("[gpu_monitor] NVML 进程利用率连续 10 次异常，"
+                    #           "进程表 SM/GMBW 可能缺数据", file=sys.stderr)
                     continue
-                _nvml_fail_streak = 0
+                # 原 _nvml_fail_streak = 0
                 for s in samples:
                     r[(idx, s.pid)] = (s.smUtil, s.memUtil)
         return r
