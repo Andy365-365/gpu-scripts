@@ -5,9 +5,9 @@ gpu_monitor.py — 仿 nvitop 风格的 GPU 监控（1 秒无闪烁覆盖刷新�
 
 布局严格按用户提供的模板 /root/template.txt 填充：
   - 每个 [] 槽位宽度锁死（与模板一致），真实值按槽宽格式化填入，超宽截断，
-    整行总宽恒为 92（顶栏 90），不随数据变化。
+    整行总宽恒为 93（顶栏 91），不随数据变化。
   - TIME 列 = 墙钟运行时长（ps -o etime，nvitop 的 TIME 含义），完整显示 HH:MM:SS。
-  - PCIe lnk 左对齐，长降级行也装在固定 92 宽内。
+  - PCIe lnk 左对齐，长降级行也装在固定 93 宽内。
 
 数据源（每帧并行采集，单帧 <1s）：
   nvidia-smi / pmon / query-compute-apps / ps / lspci -vv / /proc/{stat,meminfo}
@@ -54,29 +54,29 @@ SAVE_CUR    = "\033[s"
 RESTORE_CUR = "\033[u"
 CLR_LINE    = "\033[K"
 
-# ===== 模板固定行（照抄 /root/template.txt，总宽 92）=====
-TOP = "╒" + "═" * 90 + "╕"
-G_SEP1 = "├" + "─" * 40 + "┬" + "─" * 23 + "┬" + "─" * 25 + "┤"
-G_HDR  = "│ GPU   Fan   Temp   Perf   Pwr:Usg/Cap  │     Memory-Usage      │ GPU-Util  Compute M.    │"
-G_SEP2 = "╞" + "═" * 40 + "╪" + "═" * 23 + "╪" + "═" * 25 + "╡"
-G_MID  = "├" + "─" * 40 + "┼" + "─" * 23 + "┼" + "─" * 25 + "┤"
-G_END  = "╞" + "═" * 40 + "╧" + "═" * 23 + "╧" + "═" * 25 + "╡"
-P_HDR  = "│ GPU     PID     USER   GPU-MEM   %SM   %GMBW  %CPU   %MEM   TIME       COMMAND           │"
-P_TOP  = "╞" + "═" * 90 + "╡"
-P_MID  = "├" + "─" * 90 + "┤"
-P_END  = "╞" + "═" * 90 + "╡"
-C_HDR  = "│ SLOT   PCIE                      LINK SPEED                                              │"
-C_TOP  = "╞" + "═" * 90 + "╡"
-C_MID  = "├" + "─" * 90 + "┤"
-C_END  = "╘" + "═" * 90 + "╛"
+# ===== 模板固定行（总宽 93；右边界由 92 右移 1 列，中间分栏位置不变）=====
+TOP = "╒" + "═" * 91 + "╕"
+G_SEP1 = "├" + "─" * 40 + "┬" + "─" * 23 + "┬" + "─" * 26 + "┤"
+G_HDR  = "│ GPU   Fan   Temp   Perf   Pwr:Usg/Cap  │     Memory-Usage      │ GPU-Util  Compute M.     │"
+G_SEP2 = "╞" + "═" * 40 + "╪" + "═" * 23 + "╪" + "═" * 26 + "╡"
+G_MID  = "├" + "─" * 40 + "┼" + "─" * 23 + "┼" + "─" * 26 + "┤"
+G_END  = "╞" + "═" * 40 + "╧" + "═" * 23 + "╧" + "═" * 26 + "╡"
+P_HDR  = "│ GPU     PID     USER   GPU-MEM   %SM   %GMBW  %CPU   %MEM   TIME       COMMAND            │"
+P_TOP  = "╞" + "═" * 91 + "╡"
+P_MID  = "├" + "─" * 91 + "┤"
+P_END  = "╞" + "═" * 91 + "╡"
+C_HDR  = "│ SLOT  PCIE    GC-Clock  GM-Clock  MC-Clock  MM-Clock           LINK SPEED                 │"
+C_TOP  = "╞" + "═" * 91 + "╡"
+C_MID  = "├" + "─" * 91 + "┤"
+C_END  = "╘" + "═" * 91 + "╛"
 
-# ===== 数据行模板（[ ] 为槽位；填充时 [ ] 各自替换成一个空格，值填入中间，行宽恒定 92）=====
-GPU_T  = "│ [0] [ 90%]  [74C]  [P2]  [288W / 300W] │ [23.20GiB / 24.00GiB] │  [ 44%]    [Default]    │"
-PROC_T = "│ [0]  [10847 C] [root] [23.18GiB] [46]   [37] [ 68.9] [2.6] [01:44:59] [VLLM::Worker_TP0] │"
-TOP_T  = "[Sun Aug 23 12:11:44 2026]                                     CPU: [ 7.5% ] MEM: [ 9.7% ]"
-TITLE_T = "│【LuckyStep 1.0.0】     Driver Version: [610.43.02]           CUDA Driver Version: [13.3] │"
+# ===== 数据行模板（[ ] 为槽位；填充时 [ ] 各自替换成一个空格，值填入中间，行宽恒定 93）=====
+GPU_T  = "│ [0] [ 90%]  [74C]  [P2]  [288W / 300W] │ [23.20GiB / 24.00GiB] │  [ 44%]    [Default]     │"
+PROC_T = "│ [0]  [10847 C] [root] [23.18GiB] [46]   [37] [ 68.9] [2.6] [01:44:59] [VLLM::Worker_TP0]  │"
+TOP_T  = "[Sun Aug 23 12:11:44 2026]                                     CPU: [ 7.5% ] MEM: [ 9.7% ] "
+TITLE_T = "│<LuckyStep v1.0.0>      Driver Version: [610.43.02]           CUDA Driver Version: [13.3]  │"
 # PCIe 行统一用「长行」版固定模板：lnk 槽最宽（可装下最长降级行），短 lnk 左对齐补齐
-PCI_T  = "│ [4  ][BDF84:00.0]     [LnkSta: Speed 2.5GT/s (downgraded), Width x8 (downgraded)]        │"
+PCI_T  = "│ [4] [84:00.0][1.50GHz] [2.10GHz] [9.40GHz] [9.70GHz][2.5GT/s (downgraded) x8 (downgraded)]│"
 
 ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
@@ -208,7 +208,14 @@ def render(d):
     for i, pc in enumerate(pcis):
         degraded = "downgraded" in pc["lnk"].lower()
         lnk = (ORANGE + pc["lnk"] + RESET) if degraded else (GREEN + pc["lnk"] + RESET)
-        rows.append(fill(PCI_T, [pc["slot"], f"BDF{pc['bdf']}", lnk]))
+        gc_val = f"{pc['gc']/1000:.2f}GHz"
+        gc_c = RED if pc.get("thr") else GREEN
+        gc = (gc_c + gc_val + RESET)
+        rows.append(fill(PCI_T, [
+            pc["slot"], pc["bdf"],
+            gc, f"{pc['gm']/1000:.2f}GHz",
+            f"{pc['mc']/1000:.2f}GHz", f"{pc['mm']/1000:.2f}GHz", lnk,
+        ]))
         rows.append(P_END if i == len(pcis) - 1 else C_MID)
     if not pcis:
         rows.append(P_END)
@@ -249,14 +256,17 @@ def run(cmd, timeout=5):
 def query_gpus():
     # fan_speed 在该驱动上会让整条 query 失败，故不在此查询；fan 由 get_fans_and_version() 补。
     f = ("--query-gpu=index,temperature.gpu,pstate,power.draw,power.limit,"
-         "utilization.gpu,memory.used,memory.total,pci.bus_id")
+         "utilization.gpu,memory.used,memory.total,pci.bus_id,"
+         "clocks.current.graphics,clocks.max.graphics,"
+         "clocks.current.memory,clocks.max.memory,"
+         "clocks_throttle_reasons.active")
     out = strip_ansi(run(f"nvidia-smi {f} --format=csv,noheader"))
     gpus = []
     for line in out.splitlines():
         if not line.strip():
             continue
         p = [x.strip() for x in line.split(",")]
-        if len(p) < 9:
+        if len(p) < 14:
             continue
         gpus.append({
             "idx": int(p[0]),
@@ -270,6 +280,12 @@ def query_gpus():
             "fan": "[N/A]",
             "bdf": p[8].split(":")[-2] + ":" + p[8].split(":")[-1],
             "cm": "Default",
+            "gc": int(float(p[9].split()[0])),
+            "gm": int(float(p[10].split()[0])),
+            "mc": int(float(p[11].split()[0])),
+            "mm": int(float(p[12].split()[0])),
+            # 0x50 = HW Thermal(0x10) | SW Thermal(0x40)，任一热降频激活 → True
+            "thr": (int(p[13], 16) & 0x50) != 0,
         })
     return gpus
 
@@ -303,7 +319,9 @@ def get_pci(bdfs):
         lnk = ""
         m = re.search(r"LnkSta:\s*(.*)", o)
         if m:
-            lnk = "LnkSta: " + m.group(1).strip()
+            lnk = m.group(1).strip()
+            lnk = re.sub(r"^Speed\s+", "", lnk)
+            lnk = re.sub(r",\s*Width\s+", " ", lnk)
         return bdf, slot, lnk
     out = {}
     if bdfs:
@@ -480,7 +498,11 @@ def collect():
         "cpu": cp, "mem": mp,
         "driver": drv, "cuda": cud,
         "gpus": gpus, "procs": procs,
-        "pcis": [pcis[g["bdf"]] for g in gpus if g["bdf"] in pcis],
+        "pcis": [
+            {**pcis[g["bdf"]], "gc": g["gc"], "gm": g["gm"],
+             "mc": g["mc"], "mm": g["mm"], "thr": g["thr"]}
+            for g in gpus if g["bdf"] in pcis
+        ],
         "elapsed": time.time() - t0,
     }
 
@@ -499,8 +521,10 @@ def demo_data():
             {"gpu": 1, "pid": 10911, "ty": "C", "user": "root", "mem": "23.18GiB", "sm": 87, "bw": 37, "cpu": 68.4, "mem_": 2.6, "time": "01:44:10", "cmd": "VLLM::Worker_TP1"},
         ],
         "pcis": [
-            {"slot": "6", "bdf": "03:00.0", "lnk": "LnkSta: Speed 8GT/s, Width x16"},
-            {"slot": "4", "bdf": "84:00.0", "lnk": "LnkSta: Speed 2.5GT/s (downgraded), Width x8 (downgraded)"},
+            {"slot": "6", "bdf": "03:00.0", "lnk": "2.5GT/s (downgraded) x16",
+             "gc": 1400, "gm": 2100, "mc": 9500, "mm": 9700, "thr": False},
+            {"slot": "4", "bdf": "84:00.0", "lnk": "2.5GT/s (downgraded) x8 (downgraded)",
+             "gc": 1500, "gm": 2100, "mc": 9400, "mm": 9700, "thr": True},
         ],
         "elapsed": 0.0,
     }
