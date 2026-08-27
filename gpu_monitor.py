@@ -5,9 +5,9 @@ gpu_monitor.py — 仿 nvitop 风格的 GPU 监控（1 秒无闪烁覆盖刷新�
 
 布局严格按用户提供的模板 /root/template.txt 填充：
   - 每个 [] 槽位宽度锁死（与模板一致），真实值按槽宽格式化填入，超宽截断，
-    整行总宽恒为 93（顶栏 91），不随数据变化。
+    整行总宽恒为 94（顶栏 91，无框线不扩），不随数据变化。
   - TIME 列 = 墙钟运行时长（ps -o etime，nvitop 的 TIME 含义），完整显示 HH:MM:SS。
-  - PCIe lnk 左对齐，长降级行也装在固定 93 宽内。
+  - PCIe lnk 左对齐，长降级行也装在固定 94 宽内。
 
 数据源（每帧并行采集，单帧 <1s）：
   nvidia-smi / pmon / query-compute-apps / ps / lspci -vv / /proc/{stat,meminfo}
@@ -54,29 +54,29 @@ SAVE_CUR    = "\033[s"
 RESTORE_CUR = "\033[u"
 CLR_LINE    = "\033[K"
 
-# ===== 模板固定行（总宽 93；右边界由 92 右移 1 列，中间分栏位置不变）=====
-TOP = "╒" + "═" * 91 + "╕"
-G_SEP1 = "├" + "─" * 40 + "┬" + "─" * 23 + "┬" + "─" * 26 + "┤"
-G_HDR  = "│ GPU   Fan   Temp   Perf   Pwr:Usg/Cap  │     Memory-Usage      │ GPU-Util  Compute M.     │"
-G_SEP2 = "╞" + "═" * 40 + "╪" + "═" * 23 + "╪" + "═" * 26 + "╡"
-G_MID  = "├" + "─" * 40 + "┼" + "─" * 23 + "┼" + "─" * 26 + "┤"
-G_END  = "╞" + "═" * 40 + "╧" + "═" * 23 + "╧" + "═" * 26 + "╡"
-P_HDR  = "│ GPU     PID     USER   GPU-MEM   %SM   %GMBW  %CPU   %MEM   TIME       COMMAND            │"
-P_TOP  = "╞" + "═" * 91 + "╡"
-P_MID  = "├" + "─" * 91 + "┤"
-P_END  = "╞" + "═" * 91 + "╡"
-C_HDR  = "│ SLOT  PCIE    GC-Clock  GM-Clock  MC-Clock  MM-Clock           LINK SPEED                 │"
-C_TOP  = "╞" + "═" * 91 + "╡"
-C_MID  = "├" + "─" * 91 + "┤"
-C_END  = "╘" + "═" * 91 + "╛"
+# ===== 模板固定行（总宽 94；右边界由 93 右移 1 列，中间分栏位置不变）=====
+TOP = "╒" + "═" * 92 + "╕"
+G_SEP1 = "├" + "─" * 40 + "┬" + "─" * 23 + "┬" + "─" * 27 + "┤"
+G_HDR  = "│ GPU   Fan   Temp   Perf   Pwr:Usg/Cap  │     Memory-Usage      │ GPU-Util  Compute M.      │"
+G_SEP2 = "╞" + "═" * 40 + "╪" + "═" * 23 + "╪" + "═" * 27 + "╡"
+G_MID  = "├" + "─" * 40 + "┼" + "─" * 23 + "┼" + "─" * 27 + "┤"
+G_END  = "╞" + "═" * 40 + "╧" + "═" * 23 + "╧" + "═" * 27 + "╡"
+P_HDR  = "│ GPU     PID     USER   GPU-MEM    %SM   %GMBW  %CPU   %MEM  TIME       COMMAND             │"
+P_TOP  = "╞" + "═" * 92 + "╡"
+P_MID  = "├" + "─" * 92 + "┤"
+P_END  = "╞" + "═" * 92 + "╡"
+C_HDR  = "│ SLOT  PCIE    GC-Clock  GM-Clock  MC-Clock  MM-Clock  LINK SPEED                           │"
+C_TOP  = "╞" + "═" * 92 + "╡"
+C_MID  = "├" + "─" * 92 + "┤"
+C_END  = "╘" + "═" * 92 + "╛"
 
-# ===== 数据行模板（[ ] 为槽位；填充时 [ ] 各自替换成一个空格，值填入中间，行宽恒定 93）=====
-GPU_T  = "│ [0] [ 90%]  [74C]  [P2]  [288W / 300W] │ [23.20GiB / 24.00GiB] │  [ 44%]    [Default]     │"
-PROC_T = "│ [0]  [10847 C] [root] [23.18GiB] [46]   [37] [ 68.9] [2.6] [01:44:59] [VLLM::Worker_TP0]  │"
+# ===== 数据行模板（[ ] 为槽位；填充时 [ ] 各自替换成一个空格，值填入中间，行宽恒定 94）=====
+GPU_T  = "│ [0] [ 90%]  [74C]  [P2]  [288W / 300W] │ [23.20GiB / 24.00GiB] │  [ 44%]    [Default]      │"
+PROC_T = "│ [0]  [10847 C] [root] [23.18GiB] [ 46]  [ 37][ 68.9] [2.6] [01:44:59] [VLLM::Worker_TP0]   │"
 TOP_T  = "[Sun Aug 23 12:11:44 2026]                                     CPU: [ 7.5% ] MEM: [ 9.7% ] "
-TITLE_T = "│<LuckyStep v1.0.0>      Driver Version: [610.43.02]           CUDA Driver Version: [13.3]  │"
+TITLE_T = "│<LuckyStep v1.0.0>      Driver Version: [610.43.02]           CUDA Driver Version: [13.3]   │"
 # PCIe 行统一用「长行」版固定模板：lnk 槽最宽（可装下最长降级行），短 lnk 左对齐补齐
-PCI_T  = "│ [4] [84:00.0][1.50GHz] [2.10GHz] [9.40GHz] [9.70GHz][2.5GT/s (downgraded) x8 (downgraded)]│"
+PCI_T  = "│ [4] [84:00.0][1.50GHz] [2.10GHz] [9.40GHz] [9.70GHz] [2.5GT/s (downgraded) x8 (downgraded)]│"
 
 ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
@@ -284,8 +284,10 @@ def query_gpus():
             "gm": int(float(p[10].split()[0])),
             "mc": int(float(p[11].split()[0])),
             "mm": int(float(p[12].split()[0])),
-            # 0x50 = HW Thermal(0x10) | SW Thermal(0x40)，任一热降频激活 → True
-            "thr": (int(p[13], 16) & 0x50) != 0,
+            # 0x60 = SW Thermal(0x20) | HW Thermal(0x40)，任一热降频激活 → True
+            # 位定义见 nvml.h：SwPowerCap=0x4 HwSlowdown=0x8 SyncBoost=0x10
+            #          SwThermal=0x20 HwThermal=0x40 HwPowerBrake=0x80(不含)
+            "thr": (int(p[13], 16) & 0x60) != 0,
         })
     return gpus
 
