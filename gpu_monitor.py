@@ -61,7 +61,7 @@ G_HDR  = "│ GPU   Fan   Temp   Perf   Pwr:Usg/Cap  │     Memory-Usage      �
 G_SEP2 = "╞" + "═" * 40 + "╪" + "═" * 23 + "╪" + "═" * 27 + "╡"
 G_MID  = "├" + "─" * 40 + "┼" + "─" * 23 + "┼" + "─" * 27 + "┤"
 G_END  = "╞" + "═" * 40 + "╧" + "═" * 23 + "╧" + "═" * 27 + "╡"
-P_HDR  = "│ GPU     PID     USER   GPU-MEM    %SM   %GMBW  %CPU   %MEM  TIME       COMMAND             │"
+P_HDR  = "│ GPU     PID     USER    GPU-MEM   %SM   %GMBW  %CPU   %MEM  TIME       COMMAND             │"
 P_TOP  = "╞" + "═" * 92 + "╡"
 P_MID  = "├" + "─" * 92 + "┤"
 P_END  = "╞" + "═" * 92 + "╡"
@@ -72,7 +72,7 @@ C_END  = "╘" + "═" * 92 + "╛"
 
 # ===== 数据行模板（[ ] 为槽位；填充时 [ ] 各自替换成一个空格，值填入中间，行宽恒定 94）=====
 GPU_T  = "│ [0] [ 90%]  [74C]  [P2]  [288W / 300W] │ [23.20GiB / 24.00GiB] │  [ 44%]    [Default]      │"
-PROC_T = "│ [0]  [10847 C] [root] [23.18GiB] [ 46]  [ 37][ 68.9] [2.6] [01:44:59] [VLLM::Worker_TP0]   │"
+PROC_T = "│ [0]  [10847 C] [root] [ 23.18GiB][ 46]  [ 37][ 68.9] [2.6] [01:44:59] [VLLM::Worker_TP0]   │"
 TOP_T  = "[Sun Aug 23 12:11:44 2026]                                     CPU: [ 7.5% ] MEM: [ 9.7% ] "
 TITLE_T = "│<LuckyStep v1.0.0>      Driver Version: [610.43.02]           CUDA Driver Version: [13.3]   │"
 # PCIe 行统一用「长行」版固定模板：lnk 槽最宽（可装下最长降级行），短 lnk 左对齐补齐
