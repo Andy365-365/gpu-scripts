@@ -558,6 +558,10 @@ def main():
 
     signal.signal(signal.SIGINT, lambda *a: sys.exit(0))
     psutil.cpu_percent(None)  # 初始化：psutil 首次调用无历史，先建立基线
+    # 启动时先整屏清屏：面板只覆盖自身 24 行区域，之前命令行留在屏底的
+    # 旧输出（如 lspci 表格）无人清理，直接裸露。进循环前清一次，只留面板。
+    sys.stdout.write("\033[2J\033[1;1H")
+    sys.stdout.flush()
     prev_size = term_size()
     height = 0  # 高度水印：至今最大行数。原地刷新靠它补空行（带 CLR_LINE）
               # 清除当前帧没覆盖到的旧行——进程表变空/容器关闭时行数缩短，
