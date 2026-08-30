@@ -56,11 +56,11 @@ CLR_LINE    = "\033[K"
 
 # ===== 模板固定行（总宽 94；右边界由 93 右移 1 列，中间分栏位置不变）=====
 TOP = "╒" + "═" * 92 + "╕"
-G_SEP1 = "├" + "─" * 40 + "┬" + "─" * 23 + "┬" + "─" * 27 + "┤"
-G_HDR  = "│ GPU   Fan   Temp   Perf   Pwr:Usg/Cap  │     Memory-Usage      │ GPU-Util  Compute M.      │"
-G_SEP2 = "╞" + "═" * 40 + "╪" + "═" * 23 + "╪" + "═" * 27 + "╡"
-G_MID  = "├" + "─" * 40 + "┼" + "─" * 23 + "┼" + "─" * 27 + "┤"
-G_END  = "╞" + "═" * 40 + "╧" + "═" * 23 + "╧" + "═" * 27 + "╡"
+G_SEP1 = "├" + "─" * 45 + "┬" + "─" * 23 + "┬" + "─" * 22 + "┤"
+G_HDR  = "│ GPU  SLOT  Fan   Temp   Perf   Pwr:Usg/Cap  │     Memory-Usage      │ GPU-Util  Compute M. │"
+G_SEP2 = "╞" + "═" * 45 + "╪" + "═" * 23 + "╪" + "═" * 22 + "╡"
+G_MID  = "├" + "─" * 45 + "┼" + "─" * 23 + "┼" + "─" * 22 + "┤"
+G_END  = "╞" + "═" * 45 + "╧" + "═" * 23 + "╧" + "═" * 22 + "╡"
 P_HDR  = "│ GPU     PID     USER    GPU-MEM   %SM   %GMBW  %CPU   %MEM  TIME       COMMAND             │"
 P_TOP  = "╞" + "═" * 92 + "╡"
 P_MID  = "├" + "─" * 92 + "┤"
@@ -71,7 +71,7 @@ C_MID  = "├" + "─" * 92 + "┤"
 C_END  = "╘" + "═" * 92 + "╛"
 
 # ===== 数据行模板（[ ] 为槽位；填充时 [ ] 各自替换成一个空格，值填入中间，行宽恒定 94）=====
-GPU_T  = "│ [0] [ 90%]  [74C]  [P2]  [288W / 300W] │ [23.20GiB / 24.00GiB] │  [ 44%]    [Default]      │"
+GPU_T  = "│ [0] [ 4] [ 90%]  [74C]  [P2]  [288W / 300W] │ [23.20GiB / 24.00GiB] │  [ 44%]   [Default]  │"
 PROC_T = "│ [0]  [10847 C] [root] [ 23.18GiB][ 46]  [ 37][ 68.9] [2.6] [01:44:59] [VLLM::Worker_TP0]   │"
 TOP_T  = "[Sun Aug 23 12:11:44 2026]                                     CPU: [ 7.5% ] MEM: [ 9.7% ] "
 TITLE_T = "│<LuckyStep v1.0.0>      Driver Version: [610.43.02]           CUDA Driver Version: [13.3]   │"
@@ -187,6 +187,7 @@ def render(d):
         mem_pct = (g["mu"] / g["mt"] * 100.0) if g["mt"] else 0.0
         line = fill(GPU_T, [
             f"{g['idx']}",
+            g["slot"],
             g["fan"],
             f"{g['temp']}C",
             g["pstate"],
@@ -278,6 +279,9 @@ def query_gpus():
             "mu": int(p[6].split()[0]) / 1024.0,
             "mt": int(p[7].split()[0]) / 1024.0,
             "fan": "[N/A]",
+            # slot 初值填 bdf，collect() 里 get_pci() 的 lspci Physical Slot 会覆盖；
+            # 拿不到 Physical Slot 时 get_pci() 回退 "0"（同 PCIe 表）
+            "slot": p[8].split(":")[-2] + ":" + p[8].split(":")[-1],
             "bdf": p[8].split(":")[-2] + ":" + p[8].split(":")[-1],
             "cm": "Default",
             "gc": int(float(p[9].split()[0])),
@@ -488,6 +492,10 @@ def collect():
             if g["idx"] in fans:
                 g["fan"] = fans[g["idx"]]
         pcis = get_pci([g["bdf"] for g in gpus])
+        # GPU 主表的 SLOT 列 = lspci Physical Slot，与下方 PCIe 表同源
+        for g in gpus:
+            if g["bdf"] in pcis:
+                g["slot"] = pcis[g["bdf"]]["slot"]
         _cache.update(gpus=gpus, pcis=pcis, drv=drv, cud=cud, last_gpu=now)
     else:
         gpus, drv, cud, pcis = _cache["gpus"], _cache["drv"], _cache["cud"], _cache["pcis"]
@@ -515,8 +523,8 @@ def demo_data():
         "cpu": 7.5, "mem": 9.7,
         "driver": "610.43.02", "cuda": "13.3",
         "gpus": [
-            {"idx": 0, "temp": 74, "pstate": "P2", "pwr": 288, "plim": 300, "util": 44, "mu": 23.20, "mt": 24.0, "fan": "90%", "bdf": "03:00.0", "cm": "Default"},
-            {"idx": 1, "temp": 92, "pstate": "P2", "pwr": 241, "plim": 300, "util": 85, "mu": 23.20, "mt": 24.0, "fan": "100%", "bdf": "84:00.0", "cm": "Default"},
+            {"idx": 0, "temp": 74, "pstate": "P2", "pwr": 288, "plim": 300, "util": 44, "mu": 23.20, "mt": 24.0, "fan": "90%", "bdf": "03:00.0", "slot": "6", "cm": "Default"},
+            {"idx": 1, "temp": 92, "pstate": "P2", "pwr": 241, "plim": 300, "util": 85, "mu": 23.20, "mt": 24.0, "fan": "100%", "bdf": "84:00.0", "slot": "4", "cm": "Default"},
         ],
         "procs": [
             {"gpu": 0, "pid": 10847, "ty": "C", "user": "root", "mem": "23.18GiB", "sm": 46, "bw": 37, "cpu": 68.9, "mem_": 2.6, "time": "01:44:59", "cmd": "VLLM::Worker_TP0"},
