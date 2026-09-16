@@ -168,7 +168,7 @@ def color_temp(t):
 
 
 def render(d):
-    rows = []
+    rows = [""]  # 最上一行留空：面板锚定第 1 行原地重绘，空行让整屏下移一行
     # 顶栏：CPU 亮青 / MEM 亮粉，标签文字与数值一起染色（同 nvitop）
     top = fill(TOP_T, [d["date"], f"{d['cpu']:.1f}%", f"{d['mem']:.1f}%"])
     top = re.sub(r"CPU: \s*[\d.]+%", lambda m: CYAN + m.group(0) + RESET, top)
