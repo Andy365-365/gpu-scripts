@@ -73,8 +73,7 @@ C_END  = "╘" + "═" * 92 + "╛"
 # ===== 数据行模板（[ ] 为槽位；填充时 [ ] 各自替换成一个空格，值填入中间，行宽恒定 94）=====
 GPU_T  = "│ [0] [ 4] [ 90%]  [74C]  [P2]  [288W / 300W] │ [23.20GiB / 24.00GiB] │  [ 44%]   [Default]  │"
 PROC_T = "│ [0]  [10847 C] [root] [ 23.18GiB][ 46]  [ 37][ 68.9] [2.6] [01:44:59] [VLLM::Worker_TP0]   │"
-TOP_T  = "[Sun Aug 23 12:11:44 2026]                                     CPU: [ 7.5% ] MEM: [ 9.7% ] "
-TITLE_T = "│<LuckyStep v1.0.0>      Driver Version: [610.43.02]           CUDA Driver Version: [13.3]   │"
+TITLE_T = "│<LuckyStep v1.0.0>  Driver :[610.43.02 ]CUDA:[13.3]                CPU:[ 7.5% ]MEM:[10.3%  ]│"
 # PCIe 行统一用「长行」版固定模板：lnk 槽最宽（可装下最长降级行），短 lnk 左对齐补齐
 PCI_T  = "│ [4] [84:00.0][1.50GHz] [2.10GHz] [9.40GHz] [9.70GHz] [2.5GT/s (downgraded) x8 (downgraded)]│"
 
@@ -168,16 +167,14 @@ def color_temp(t):
 
 
 def render(d):
-    rows = [""]  # 最上一行留空：面板锚定第 1 行原地重绘，空行让整屏下移一行
-    # 顶栏：CPU 亮青 / MEM 亮粉，标签文字与数值一起染色（同 nvitop）
-    top = fill(TOP_T, [d["date"], f"{d['cpu']:.1f}%", f"{d['mem']:.1f}%"])
-    top = re.sub(r"CPU: \s*[\d.]+%", lambda m: CYAN + m.group(0) + RESET, top)
-    top = re.sub(r"MEM: \s*[\d.]+%", lambda m: MAGENTA + m.group(0) + RESET, top)
-    top += RESET  # 行尾空格不染
-    rows.append(top)
-    # 标题框
+    rows = []
+    # 标题框：CPU 亮青 / MEM 亮粉，标签文字与数值一起染色（同 nvitop）
     rows.append(TOP)
-    rows.append(fill(TITLE_T, [d["driver"], d["cuda"]]))
+    title = fill(TITLE_T, [d["driver"], d["cuda"], f"{d['cpu']:.1f}%", f"{d['mem']:.1f}%"])
+    title = re.sub(r"CPU: \s*[\d.]+%", lambda m: CYAN + m.group(0) + RESET, title)
+    title = re.sub(r"MEM: \s*[\d.]+%", lambda m: MAGENTA + m.group(0) + RESET, title)
+    title += RESET  # 行尾空格不染
+    rows.append(title)
     # GPU 主表
     rows.append(G_SEP1)
     rows.append(G_HDR)
