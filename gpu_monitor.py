@@ -221,6 +221,16 @@ def render(d):
     rows.append(P_HDR)
     rows.append(P_TOP)
     procs = d["procs"]
+    # Xorg 噪音过滤：Xorg 进程挂在「没有任何 connected 显示接口」的卡上时跳过。
+    # 保守：conn_map 为空（读不到 /sys）或卡上有 connected → 一律保留。
+    conn_map = _gpu_has_connected()
+    idx2bdf = {g["idx"]: g["bdf"] for g in d["gpus"]}
+    if conn_map:
+        procs = [p for p in procs
+                 if not (p["cmd"] == "Xorg"
+                         and conn_map.get(
+                             _bdf_full(idx2bdf.get(p["gpu"], "")), True)
+                         is False)]
     for i, p in enumerate(procs):
         t = fmt_time(p["time"])
         rows.append(fill(PROC_T, [
@@ -240,6 +250,60 @@ def render(d):
     if not procs:
         rows.append(C_END)
     return rows
+
+
+# ===== Xorg 噪音过滤 =====
+# Xorg 启动时会枚举系统所有 GPU 的 EGL 设备（打开 /dev/nvidiaN），
+# 于是 NVML 的 Graphics 进程列表里每张 N 卡都挂一个 Xorg，但显示器
+# 实际接在哪张卡上它只显示那一处。过滤规则（保守，宁多不漏）：
+# 仅当进程是 Xorg 且其所在卡的所有显示接口都 disconnected 时才跳过；
+# 卡上有接口 connected = 真在显示，一律保留。
+# 结果缓存 2s，随进程表刷新节奏读 /sys，避免每帧扫盘。
+_drm_conn_cache = {"t": 0.0, "map": {}}
+
+
+def _gpu_has_connected(drm_root="/sys/class/drm"):
+    """{bdf 小写全形(如 '0000:03:00.0'): 该卡是否有 connected 显示接口}。
+    读 /sys/class/drm/card*/device 软链接拿到 PCI 地址，再扫
+    card*-*/status。任何异常（无权限/无目录）返回 {} = 不掌握信息，
+    调用方按"不过滤"处理（保守方向）。"""
+    now = time.time()
+    if now - _drm_conn_cache["t"] < 2.0:
+        return _drm_conn_cache["map"]
+    m = {}
+    try:
+        import os
+        for card in os.listdir(drm_root):
+            if not re.match(r"card\d+$", card):
+                continue
+            try:
+                lnk = os.readlink(os.path.join(drm_root, card, "device"))
+            except OSError:
+                continue
+            # 软链接指向 .../0000:03:00.0 形式
+            bdf = lnk.rsplit("/", 1)[-1].lower()
+            if bdf not in m:
+                m[bdf] = False
+            for conn in os.listdir(os.path.join(drm_root, card)):
+                if conn in ("device", "power", "subsystem", "dev", "uevent"):
+                    continue
+                try:
+                    if open(os.path.join(drm_root, card, conn,
+                                         "status")).read().strip() == "connected":
+                        m[bdf] = True
+                        break
+                except OSError:
+                    pass
+    except Exception:
+        return {}
+    _drm_conn_cache["t"] = now
+    _drm_conn_cache["map"] = m
+    return m
+
+
+def _bdf_full(bdf):
+    # "03:00.0" -> "0000:03:00.0"，"84:00.0" -> "0000:84:00.0"
+    return ("0000:" + bdf) if len(bdf) <= 7 else bdf
 
 
 # ===== 采集 =====
