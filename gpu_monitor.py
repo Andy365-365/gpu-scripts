@@ -57,7 +57,7 @@ CLR_LINE    = "\033[K"
 # ===== 模板固定行（总宽 94；右边界由 93 右移 1 列，中间分栏位置不变）=====
 TOP = "╒" + "═" * 92 + "╕"
 G_SEP1 = "├" + "─" * 45 + "┬" + "─" * 23 + "┬" + "─" * 22 + "┤"
-G_HDR  = "│ GPU  SLOT  Fan   Temp   Perf   Pwr:Usg/Cap  │     Memory-Usage      │ GPU-Util  Compute M. │"
+G_HDR  = "│ GPU  SLOT  Fan   Temp   Perf   Pwr:Usg/Cap  │     Memory-Usage      │ GPU-Util  NvLink G/s │"
 G_SEP2 = "╞" + "═" * 45 + "╪" + "═" * 23 + "╪" + "═" * 22 + "╡"
 G_MID  = "├" + "─" * 45 + "┼" + "─" * 23 + "┼" + "─" * 22 + "┤"
 G_END  = "╞" + "═" * 45 + "╧" + "═" * 23 + "╧" + "═" * 22 + "╡"
@@ -71,7 +71,7 @@ C_MID  = "├" + "─" * 92 + "┤"
 C_END  = "╘" + "═" * 92 + "╛"
 
 # ===== 数据行模板（[ ] 为槽位；填充时 [ ] 各自替换成一个空格，值填入中间，行宽恒定 94）=====
-GPU_T  = "│ [0] [ 4] [ 90%]  [74C]  [P2]  [288W / 300W] │ [23.20GiB / 24.00GiB] │  [ 44%]   [Default]  │"
+GPU_T  = "│ [0] [ 4] [ 90%]  [74C]  [P2]  [288W / 300W] │ [23.20GiB / 24.00GiB] │  [ 44%]   [14.1 x 4] │"
 PROC_T = "│ [0]  [10847 C] [root] [ 23.18GiB][ 46]  [ 37][ 68.9] [2.6] [01:44:59] [VLLM::Worker_TP0]   │"
 TITLE_T = "│<LuckyStep v1.0.0>  Driver :[610.43.02 ]CUDA:[13.3]                CPU:[ 7.5% ]MEM:[10.3%  ]│"
 # PCIe 行统一用「长行」版固定模板：lnk 槽最宽（可装下最长降级行），短 lnk 左对齐补齐
@@ -315,6 +315,38 @@ def run(cmd, timeout=5):
         return ""
 
 
+def query_nvlinks():
+    """每卡 NVLink 状态：返回 {idx: "14.1 x 4"}（满速全活）或带红色的降级串。
+    NVLink 是固定时钟协议，无降速档位，只有 up/down；带宽取各 up 链路额定值的最大值。
+    槽宽 9（'14.1 x 4' 占 8）；无 NVLink/全 down 显示 '-'。
+    数据源 nvidia-smi nvlink --status（本驱动 pynvml 缺 NvLinkCount/BandWidth 函数）。"""
+    res = {}
+    try:
+        out = strip_ansi(run("nvidia-smi nvlink --status"))
+        gpu = None
+        for line in out.splitlines():
+            m = re.match(r"^GPU\s+(\d+):", line)
+            if m:
+                gpu = int(m.group(1))
+                res.setdefault(gpu, {"up": 0, "bw": 0, "total": 0})
+                continue
+            if gpu is not None and "Link" in line:
+                res[gpu]["total"] += 1
+                m = re.search(r"([\d.]+)\s*GB/s", line)
+                if m:
+                    res[gpu]["up"] += 1
+                    res[gpu]["bw"] = max(res[gpu]["bw"], float(m.group(1)))
+        for idx, v in res.items():
+            if v["up"] == 0:
+                res[idx] = "-"
+            else:
+                res[idx] = RED + f"{v['bw']:.1f} x {v['up']}" + RESET \
+                    if v["up"] < v["total"] else f"{v['bw']:.1f} x {v['up']}"
+    except Exception:
+        pass
+    return {k: v for k, v in res.items() if isinstance(v, str)}
+
+
 def query_gpus():
     # fan_speed 在该驱动上会让整条 query 失败，故不在此查询；fan 由 get_fans_and_version() 补。
     f = ("--query-gpu=index,temperature.gpu,pstate,power.draw,power.limit,"
@@ -540,6 +572,7 @@ def collect():
         f_c = ex.submit(cpu_percent) if need_host else None
         f_g = ex.submit(query_gpus) if need_gpu else None
         f_f = ex.submit(get_fans_and_version) if need_gpu else None
+        f_n = ex.submit(query_nvlinks) if need_gpu else None
         f_p = ex.submit(get_procs) if need_proc else None
     if need_host:
         mp, cp = f_m.result(), f_c.result()
@@ -549,9 +582,12 @@ def collect():
         mp, cp = _cache["host"]
     if need_gpu:
         gpus, (fans, drv, cud) = f_g.result(), f_f.result()
+        nvls = f_n.result()
         for g in gpus:
             if g["idx"] in fans:
                 g["fan"] = fans[g["idx"]]
+            if g["idx"] in nvls:
+                g["cm"] = nvls[g["idx"]]
         pcis = get_pci([g["bdf"] for g in gpus])
         # GPU 主表的 SLOT 列 = lspci Physical Slot，与下方 PCIe 表同源
         for g in gpus:
@@ -584,8 +620,8 @@ def demo_data():
         "cpu": 7.5, "mem": 9.7,
         "driver": "610.43.02", "cuda": "13.3",
         "gpus": [
-            {"idx": 0, "temp": 74, "pstate": "P2", "pwr": 288, "plim": 300, "util": 44, "mu": 23.20, "mt": 24.0, "fan": "90%", "bdf": "03:00.0", "slot": "6", "cm": "Default"},
-            {"idx": 1, "temp": 92, "pstate": "P2", "pwr": 241, "plim": 300, "util": 85, "mu": 23.20, "mt": 24.0, "fan": "100%", "bdf": "84:00.0", "slot": "4", "cm": "Default"},
+            {"idx": 0, "temp": 74, "pstate": "P2", "pwr": 288, "plim": 300, "util": 44, "mu": 23.20, "mt": 24.0, "fan": "90%", "bdf": "03:00.0", "slot": "6", "cm": "14.1 x 4"},
+            {"idx": 1, "temp": 92, "pstate": "P2", "pwr": 241, "plim": 300, "util": 85, "mu": 23.20, "mt": 24.0, "fan": "100%", "bdf": "84:00.0", "slot": "4", "cm": "14.1 x 4"},
         ],
         "procs": [
             {"gpu": 0, "pid": 10847, "ty": "C", "user": "root", "mem": "23.18GiB", "sm": 46, "bw": 37, "cpu": 68.9, "mem_": 2.6, "time": "01:44:59", "cmd": "VLLM::Worker_TP0"},
