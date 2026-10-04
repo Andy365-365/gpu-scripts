@@ -15,6 +15,7 @@ LuckyStep 工作站（2×RTX 3090）的 GPU 监控与诊断脚本集合。
 | `gpu-speed-watch.sh` | GPU 带宽速率实时监视。 |
 | `docker-gpu.sh` | Docker GPU 容器相关辅助。 |
 | `docker-gpu-pcie.sh` | Docker GPU + PCIe 诊断辅助。 |
+| `install-gpu-monitor.sh` | 把 `gpu_monitor.py` 包装为全局 `gpu-monitor` 命令（生成 `/usr/local/bin/gpu-monitor` 薄 wrapper）。 |
 
 ## 运行
 
@@ -28,6 +29,15 @@ python3 gpu_monitor.py --demo
 # 一键检查
 bash gpu-check.sh
 ```
+
+## 安装为全局命令 `gpu-monitor`
+
+```bash
+sh install-gpu-monitor.sh                # 装到 /usr/local/bin/gpu-monitor
+sh install-gpu-monitor.sh /custom/bin    # 装到自定义目录
+```
+
+wrapper 直接 `exec` 仓库内的 `gpu_monitor.py`（不是拷贝），`git pull` 更新后命令立即生效，重复执行幂等。
 
 ## 依赖
 
